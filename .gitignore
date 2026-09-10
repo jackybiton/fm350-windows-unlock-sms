@@ -1,0 +1,4 @@
+*.log
+install-state.json
+.vs/
+.vscode/

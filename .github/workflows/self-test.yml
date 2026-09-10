@@ -1,0 +1,17 @@
+name: PowerShell self-test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  algorithm:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test FCC response algorithm
+        shell: powershell
+        run: .\Unlock-FM350.ps1 -SelfTest
