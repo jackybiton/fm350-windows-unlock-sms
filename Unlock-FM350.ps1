@@ -81,6 +81,21 @@ function Get-Fm350AtPort {
     return $Matches[1]
 }
 
+function Test-Fm350HardwareRadioOn {
+    try {
+        $state = (& netsh mbn show radio interface=* 2>&1 | Out-String)
+        # Windows PowerShell 5.1 reads UTF-8 scripts without a BOM as ANSI, so
+        # construct localized labels from code points instead of source literals.
+        $hardwareRadioStateCn = -join ([char[]](30828, 20214, 26080, 32447, 30005, 29366, 24577))
+        $radioOnCn = -join ([char[]](25171, 24320))
+        $localizedPattern = [regex]::Escape($hardwareRadioStateCn) + '\s*:\s*' + [regex]::Escape($radioOnCn)
+        return ($state -match 'Hardware radio state\s*:\s*On') -or ($state -match $localizedPattern)
+    }
+    catch {
+        return $false
+    }
+}
+
 function Invoke-Fm350At {
     param(
         [Parameter(Mandatory)] [string]$Port,
@@ -147,7 +162,11 @@ if ($SelfTest) {
     exit 0
 }
 
-Write-UnlockLog 'Startup unlock task started.'
+if (Test-Fm350HardwareRadioOn) {
+    exit 0
+}
+
+Write-UnlockLog 'Hardware radio is off; unlock attempt started.'
 
 for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
     try {
@@ -171,8 +190,7 @@ for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         }
 
         Start-Sleep -Seconds 1
-        $radioState = (& netsh mbn show radio interface=* 2>&1 | Out-String)
-        if ($radioState -match 'Hardware radio state\s*:\s*On') {
+        if (Test-Fm350HardwareRadioOn) {
             Write-UnlockLog "FCC unlock succeeded on $port (radio is on, attempt $attempt)."
             exit 0
         }

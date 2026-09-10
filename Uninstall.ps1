@@ -21,11 +21,18 @@ if (Test-Path -LiteralPath $statePath) {
             continue
         }
 
-        if ($entry.HadValue) {
-            Set-ItemProperty -LiteralPath $registryPath -Name 'WWANFeatureAT' -Type DWord -Value $entry.OldValue
+        if ($entry.WWANFeatureATHadValue) {
+            Set-ItemProperty -LiteralPath $registryPath -Name 'WWANFeatureAT' -Type DWord -Value $entry.WWANFeatureATOldValue
         }
         else {
             Remove-ItemProperty -LiteralPath $registryPath -Name 'WWANFeatureAT' -ErrorAction SilentlyContinue
+        }
+
+        if ($entry.SelectiveSuspendHadValue) {
+            Set-ItemProperty -LiteralPath $registryPath -Name '*SelectiveSuspend' -Type DWord -Value $entry.SelectiveSuspendOldValue
+        }
+        else {
+            Remove-ItemProperty -LiteralPath $registryPath -Name '*SelectiveSuspend' -ErrorAction SilentlyContinue
         }
     }
 

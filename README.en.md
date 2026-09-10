@@ -26,7 +26,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\Install.ps1
 ```
 
-The installer backs up matching driver settings, enables the COM AT port, disables the Dell SMBIOS-dependent authenticator service, and creates a `SYSTEM` startup task named `FM350 FCC Unlock`.
+The installer backs up matching driver settings, enables the COM AT port, disables driver selective suspend and the Dell SMBIOS-dependent authenticator service, and creates a `SYSTEM` task named `FM350 FCC Unlock`. It runs at startup and checks the hardware-radio state once per minute, reopening the AT port only when an in-session modem reset has restored the FCC lock.
 
 Log file:
 

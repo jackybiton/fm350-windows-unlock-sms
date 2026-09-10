@@ -45,10 +45,10 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 安装程序会：
 
-1. 备份匹配网卡实例的 `WWANFeatureAT` 注册表值，以及 Dell 认证服务的启动状态。
-2. 启用驱动的 COM AT 端口。
+1. 备份匹配网卡实例的 `WWANFeatureAT`、`*SelectiveSuspend` 注册表值，以及 Dell 认证服务的启动状态。
+2. 启用驱动的 COM AT 端口，并关闭已知可能触发运行中设备复位的驱动选择性挂起。
 3. 停止并禁用在非 Dell SMBIOS 上无法工作的原认证服务。
-4. 安装 `SYSTEM` 身份运行的开机任务 `FM350 FCC Unlock`。
+4. 安装 `SYSTEM` 身份运行的任务 `FM350 FCC Unlock`：开机执行，并每分钟检查一次硬件无线状态；正常在线时不会访问 AT 端口，检测到运行中重置导致硬件无线关闭后才重新解锁。
 5. 立即尝试一次解锁；若 AT 端口刚启用，重启一次后任务会自动重试。
 
 日志位置：

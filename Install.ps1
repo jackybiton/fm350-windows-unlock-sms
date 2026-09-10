@@ -33,17 +33,20 @@ if (-not (Test-Path -LiteralPath $statePath)) {
             ) -join ' '
 
             if ($identity -match '(FM350|DW5931E|VEN_14C3&DEV_4D75|VID_8087&PID_0B62)') {
-                $hadValue = $properties.PSObject.Properties.Name -contains 'WWANFeatureAT'
+                $atHadValue = $properties.PSObject.Properties.Name -contains 'WWANFeatureAT'
+                $suspendHadValue = $properties.PSObject.Properties.Name -contains '*SelectiveSuspend'
                 $registryBackup += [pscustomobject]@{
                     Path = $_.Name
-                    HadValue = $hadValue
-                    OldValue = if ($hadValue) { $properties.WWANFeatureAT } else { $null }
+                    WWANFeatureATHadValue = $atHadValue
+                    WWANFeatureATOldValue = if ($atHadValue) { $properties.WWANFeatureAT } else { $null }
+                    SelectiveSuspendHadValue = $suspendHadValue
+                    SelectiveSuspendOldValue = if ($suspendHadValue) { $properties.'*SelectiveSuspend' } else { $null }
                 }
             }
         }
 
     [pscustomobject]@{
-        Version = 1
+        Version = 2
         Service = [pscustomobject]@{
             Exists = ($null -ne $service)
             StartType = if ($service) { $service.StartType.ToString() } else { $null }
@@ -58,6 +61,7 @@ foreach ($entry in @($state.Registry)) {
     $registryPath = $entry.Path -replace '^HKEY_LOCAL_MACHINE', 'HKLM:'
     if (Test-Path -LiteralPath $registryPath) {
         Set-ItemProperty -LiteralPath $registryPath -Name 'WWANFeatureAT' -Type DWord -Value 1
+        Set-ItemProperty -LiteralPath $registryPath -Name '*SelectiveSuspend' -Type DWord -Value 0
     }
 }
 
@@ -73,7 +77,11 @@ $powerShell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powersh
 $action = New-ScheduledTaskAction -Execute $powerShell -Argument (
     '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}"' -f $installedScript
 )
-$trigger = New-ScheduledTaskTrigger -AtStartup
+$startupTrigger = New-ScheduledTaskTrigger -AtStartup
+$watchdogTrigger = New-ScheduledTaskTrigger `
+    -Once `
+    -At (Get-Date).AddMinutes(1) `
+    -RepetitionInterval (New-TimeSpan -Minutes 1)
 $settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
@@ -82,7 +90,7 @@ $settings = New-ScheduledTaskSettingsSet `
 Register-ScheduledTask `
     -TaskName $taskName `
     -Action $action `
-    -Trigger $trigger `
+    -Trigger @($startupTrigger, $watchdogTrigger) `
     -Settings $settings `
     -User 'SYSTEM' `
     -RunLevel Highest `
