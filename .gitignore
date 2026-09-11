@@ -2,3 +2,6 @@
 install-state.json
 .vs/
 .vscode/
+**/bin/
+**/obj/
+artifacts/

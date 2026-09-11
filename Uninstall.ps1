@@ -6,9 +6,17 @@ param()
 $ErrorActionPreference = 'Stop'
 $taskName = 'FM350 FCC Unlock'
 $serviceName = 'WWAN ModemAuthenticator'
+$unlockServiceName = 'FM350UnlockService'
 $installDirectory = Join-Path $env:ProgramData 'FM350Unlock'
 $installedScript = Join-Path $installDirectory 'Unlock-FM350.ps1'
+$serviceDirectory = Join-Path $installDirectory 'Service'
 $statePath = Join-Path $installDirectory 'install-state.json'
+
+$unlockService = Get-Service -Name $unlockServiceName -ErrorAction SilentlyContinue
+if ($unlockService) {
+    Stop-Service -Name $unlockServiceName -Force -ErrorAction SilentlyContinue
+    & sc.exe delete $unlockServiceName | Out-Null
+}
 
 Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
 
@@ -34,6 +42,15 @@ if (Test-Path -LiteralPath $statePath) {
         else {
             Remove-ItemProperty -LiteralPath $registryPath -Name '*SelectiveSuspend' -ErrorAction SilentlyContinue
         }
+
+        if ($entry.PSObject.Properties.Name -contains 'DeviceSleepOnDisconnectHadValue') {
+            if ($entry.DeviceSleepOnDisconnectHadValue) {
+                Set-ItemProperty -LiteralPath $registryPath -Name '*DeviceSleepOnDisconnect' -Type DWord -Value $entry.DeviceSleepOnDisconnectOldValue
+            }
+            else {
+                Remove-ItemProperty -LiteralPath $registryPath -Name '*DeviceSleepOnDisconnect' -ErrorAction SilentlyContinue
+            }
+        }
     }
 
     if ($state.Service.Exists) {
@@ -51,5 +68,13 @@ if (Test-Path -LiteralPath $statePath) {
 }
 
 Remove-Item -LiteralPath $installedScript -Force -ErrorAction SilentlyContinue
+if (Test-Path -LiteralPath $serviceDirectory) {
+    $resolvedInstall = [IO.Path]::GetFullPath($installDirectory)
+    $resolvedService = [IO.Path]::GetFullPath($serviceDirectory)
+    if (-not $resolvedService.StartsWith($resolvedInstall + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Refusing to remove a service directory outside the installation directory.'
+    }
+    Remove-Item -LiteralPath $resolvedService -Recurse -Force
+}
 Write-Output 'FM350 auto-unlock was removed and recorded system settings were restored.'
 Write-Output "Logs and the rollback record remain in $installDirectory for audit purposes."

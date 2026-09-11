@@ -3,6 +3,9 @@
 param(
     [ValidateRange(1, 100)] [int]$MaxAttempts = 30,
     [ValidateRange(1, 30)] [int]$RetrySeconds = 4,
+    [ValidateRange(15, 300)] [int]$BootGraceSeconds = 25,
+    [ValidateRange(0, 180)] [int]$PostUnlockWatchSeconds = 60,
+    [ValidateRange(1, 15)] [int]$DeviceSettleSeconds = 3,
     [string]$LogPath = (Join-Path $env:ProgramData 'FM350Unlock\unlock.log'),
     [switch]$SelfTest
 )
@@ -162,13 +165,24 @@ if ($SelfTest) {
     exit 0
 }
 
+try {
+    $lastBoot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+    $uptimeSeconds = ((Get-Date) - $lastBoot).TotalSeconds
+    if ($uptimeSeconds -lt $BootGraceSeconds) {
+        Start-Sleep -Seconds ([Math]::Ceiling($BootGraceSeconds - $uptimeSeconds))
+    }
+}
+catch {
+    # If uptime cannot be read, continue with the normal hardware-radio check.
+}
+
 if (Test-Fm350HardwareRadioOn) {
     exit 0
 }
 
 Write-UnlockLog 'Hardware radio is off; unlock attempt started.'
 
-for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+:unlockAttempts for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
     try {
         $port = Get-Fm350AtPort
         if ([string]::IsNullOrWhiteSpace($port)) {
@@ -184,18 +198,51 @@ for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         $response = Get-DellUnlockResponse -ChallengeHex $challenge
         $verifyReply = Invoke-Fm350At -Port $port -Command ("AT+GTFCCLOCKVER={0}" -f $response)
 
-        if ($verifyReply -match '\+GTFCCLOCKVER:\s*1') {
-            Write-UnlockLog "FCC unlock succeeded on $port (attempt $attempt)."
+        $unlockSucceeded = $verifyReply -match '\+GTFCCLOCKVER:\s*1'
+        if (-not $unlockSucceeded) {
+            Start-Sleep -Seconds 1
+            $unlockSucceeded = Test-Fm350HardwareRadioOn
+        }
+
+        if (-not $unlockSucceeded) {
+            throw ('The modem rejected the FCC response: ' + ($verifyReply -replace '[\r\n]+', ' '))
+        }
+
+        Write-UnlockLog "FCC unlock succeeded on $port (attempt $attempt)."
+        if ($PostUnlockWatchSeconds -eq 0) {
             exit 0
         }
 
-        Start-Sleep -Seconds 1
-        if (Test-Fm350HardwareRadioOn) {
-            Write-UnlockLog "FCC unlock succeeded on $port (radio is on, attempt $attempt)."
-            exit 0
+        $watchDeadline = (Get-Date).AddSeconds($PostUnlockWatchSeconds)
+        $portWentAway = $false
+        while ((Get-Date) -lt $watchDeadline) {
+            Start-Sleep -Seconds 2
+            $currentPort = Get-Fm350AtPort
+
+            if ([string]::IsNullOrWhiteSpace($currentPort)) {
+                if (-not $portWentAway) {
+                    Write-UnlockLog "AT port $port disappeared after unlock; waiting for modem re-enumeration."
+                }
+                $portWentAway = $true
+                continue
+            }
+
+            if (-not $portWentAway) {
+                continue
+            }
+
+            Write-UnlockLog "AT port returned as $currentPort; waiting $DeviceSettleSeconds seconds for driver settling."
+            Start-Sleep -Seconds $DeviceSettleSeconds
+            if (Test-Fm350HardwareRadioOn) {
+                Write-UnlockLog "Modem re-enumerated on $currentPort with hardware radio already on."
+                exit 0
+            }
+
+            Write-UnlockLog "Hardware radio is off after re-enumeration; follow-up unlock started on $currentPort."
+            continue unlockAttempts
         }
 
-        throw ('The modem rejected the FCC response: ' + ($verifyReply -replace '[\r\n]+', ' '))
+        exit 0
     }
     catch {
         Write-UnlockLog "Attempt $attempt failed: $($_.Exception.Message)"

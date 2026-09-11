@@ -142,13 +142,26 @@ Provider Data Class  : 5G_SA
 
 ## 8. 持久化策略
 
-FCC 锁可能在冷启动后重新出现。项目采用以下可逆方案：
+FCC 锁可能在冷启动或模组复位后重新出现。项目采用以下可逆方案：
 
-- 以 `SYSTEM` 身份在 Windows 启动时运行解锁脚本。
-- 每分钟检查硬件无线状态，运行中设备复位重新触发 FCC 锁时自动补解锁；无线已打开时不访问 AT 端口。
-- AT 端口尚未枚举时进行有限次数重试。
-- 禁用 Dell 驱动自身的选择性挂起，降低空闲后设备复位概率。
-- 禁用依赖 Dell SMBIOS 且会持续失败的原认证服务。
+- 安装自包含的 `.NET` Windows 服务，以 `LocalSystem` 身份自动启动。
+- 服务缓存有效的 WinRT modem 实例；实例失效时用 `GetDeviceSelector`、`DeviceInformation.FindAllAsync` 和 `FromId` 重新枚举，不依赖服务账户的“默认”蜂窝接口。
+- 无线关闭时立即执行已通过冷启动实机验证的 MBIM 命令 1 流程：通用 `SUBSYS_35001CF8` 使用 Set → Set → post-Query，Dell `SUBSYS_59311028` 使用 Query → Set → Set → post-Query；不混用 AT 协议。
+- 无线已打开时只观察状态；运行中设备复位重新触发 FCC 锁时自动补解锁。
+- 同一设备成功后设置短暂防抖，避免 PCIe 子系统 ID 或端口重枚举期间重复认证。
+- 关闭 Dell 网卡实例的选择性挂起及断开后设备休眠。样机在系统级 PCIe ASPM 已关闭时仍记录到与掉卡完全同步的 WHEA AER `Surprise Down + Completion Timeout`，指向 X99 Root Port 与模组之间的链路电源转换；这些设置用于预防复发，不能恢复已经卡死的设备。
+- 禁用依赖 Dell SMBIOS 且会持续失败的原认证服务；删除旧版本的 AT 开机任务。
 - 安装时保存注册表值和服务状态，卸载时恢复。
 
 没有修改 Dell 可执行文件、绕过 Windows 驱动签名，也没有刷写模组固件。
+
+## 9. 为什么不修改网卡内核驱动
+
+Dell 驱动包把数据路径和 FCC 认证拆成了两个组件：
+
+- `WwanNet.sys` 是签名的 KMDF/NDIS 内核网卡驱动，负责 PCIe/MBIM 数据路径。
+- `WWANModemAuthenticator.exe` 是独立的 `LocalSystem` 用户态服务，负责读取 SMBIOS 并完成 FCC 认证。
+
+认证程序的静态字符串包含 `Dell Inc.`、`SystemManufacturer`、`CheckDellPcIdentifyRegistry return false`、`Not find SMBIOS FCC Type`、`DoFccUnlock` 和 `DW5931EFCCLOCK`。它还包含 `Query_INTEL_FCC_MBIM_Extension` 与 `Set_INTEL_FCC_MBIM_Extension`。进一步分析确认原厂服务通过私有 MBIM 命令 1 执行认证，主板厂商判断不属于 `WwanNet.sys`。
+
+直接修改 `WwanNet.sys` 或 INF 会破坏微软硬件兼容性签名，并可能触发内核代码完整性限制。修改原厂认证程序同样会使其签名失效，且不适合分发。项目因此保持原签名驱动不动，以独立、可审计的 `.NET` 用户态 MBIM 服务替换已禁用的原服务。
