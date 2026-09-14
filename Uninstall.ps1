@@ -53,6 +53,20 @@ if (Test-Path -LiteralPath $statePath) {
         }
     }
 
+    foreach ($entry in @($state.DevicePower)) {
+        $registryPath = $entry.Path -replace '^HKEY_LOCAL_MACHINE', 'HKLM:'
+        if (-not (Test-Path -LiteralPath $registryPath)) {
+            continue
+        }
+
+        if ($entry.HadValue) {
+            Set-ItemProperty -LiteralPath $registryPath -Name $entry.Name -Type DWord -Value $entry.OldValue
+        }
+        else {
+            Remove-ItemProperty -LiteralPath $registryPath -Name $entry.Name -ErrorAction SilentlyContinue
+        }
+    }
+
     if ($state.Service.Exists) {
         $startupType = switch ($state.Service.StartType) {
             'Automatic' { 'Automatic' }

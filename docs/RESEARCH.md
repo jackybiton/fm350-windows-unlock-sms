@@ -148,10 +148,10 @@ FCC 锁可能在冷启动或模组复位后重新出现。项目采用以下可�
 - 服务缓存有效的 WinRT modem 实例；实例失效时用 `GetDeviceSelector`、`DeviceInformation.FindAllAsync` 和 `FromId` 重新枚举，不依赖服务账户的“默认”蜂窝接口。
 - 无线关闭时立即执行已通过冷启动实机验证的 MBIM 命令 1 流程：通用 `SUBSYS_35001CF8` 使用 Set → Set → post-Query，Dell `SUBSYS_59311028` 使用 Query → Set → Set → post-Query；不混用 AT 协议。
 - 无线已打开时只观察状态；运行中设备复位重新触发 FCC 锁时自动补解锁。
-- 同一设备成功后设置短暂防抖，避免 PCIe 子系统 ID 或端口重枚举期间重复认证。
-- 关闭 Dell 网卡实例的选择性挂起及断开后设备休眠。样机在系统级 PCIe ASPM 已关闭时仍记录到与掉卡完全同步的 WHEA AER `Surprise Down + Completion Timeout`，指向 X99 Root Port 与模组之间的链路电源转换；这些设置用于预防复发，不能恢复已经卡死的设备。
+- 同一 PnP 设备生命周期内成功后不再重复认证；只有设备真正消失或重新枚举后才清除该状态。这样既能在模组复位后补解锁，也不会把用户主动关闭蜂窝无线误判为需要持续认证。
+- 关闭 Dell 网卡实例及其 `VID_8087&PID_0B62` COM AT 子设备的选择性挂起、断开后设备休眠、PCI D3cold、WDF directed power transition 及 working-state idle。Dell 网卡 INF 默认声明 `PciD3ColdSupported.HW`，网卡和 COM 驱动均写入 `WdfDirectedPowerTransitionEnable=1`；样机在系统级 PCIe ASPM 已关闭时仍出现与掉卡同步的 WHEA AER `Surprise Down` 和 Code 10/`STATUS_DEVICE_POWER_FAILURE`。这些设置只用于排除不兼容的低功耗转换，不能恢复已经卡死的设备，也不能修复插槽、转接板或供电链路的电气问题。
 - 禁用依赖 Dell SMBIOS 且会持续失败的原认证服务；删除旧版本的 AT 开机任务。
-- 安装时保存注册表值和服务状态，卸载时恢复。
+- 安装时保存注册表值和服务状态，换槽或重新运行安装程序时补充发现新实例，卸载时逐项恢复。
 
 没有修改 Dell 可执行文件、绕过 Windows 驱动签名，也没有刷写模组固件。
 
@@ -165,3 +165,17 @@ Dell 驱动包把数据路径和 FCC 认证拆成了两个组件：
 认证程序的静态字符串包含 `Dell Inc.`、`SystemManufacturer`、`CheckDellPcIdentifyRegistry return false`、`Not find SMBIOS FCC Type`、`DoFccUnlock` 和 `DW5931EFCCLOCK`。它还包含 `Query_INTEL_FCC_MBIM_Extension` 与 `Set_INTEL_FCC_MBIM_Extension`。进一步分析确认原厂服务通过私有 MBIM 命令 1 执行认证，主板厂商判断不属于 `WwanNet.sys`。
 
 直接修改 `WwanNet.sys` 或 INF 会破坏微软硬件兼容性签名，并可能触发内核代码完整性限制。修改原厂认证程序同样会使其签名失效，且不适合分发。项目因此保持原签名驱动不动，以独立、可审计的 `.NET` 用户态 MBIM 服务替换已禁用的原服务。
+
+## 10. 最终验证结论与问题归属
+
+冷启动实测确认，独立服务能在设备出现后通过私有 MBIM 命令 1 完成 FCC challenge/response，使 Windows 硬件无线状态变为 `On`，并自动连接中国电信 5G SA。由 post-Query 第二字段变为 `1`、Windows 注册状态和实际数据请求共同确认，算法、载荷、MBIM 扩展路径以及开机服务集成均有效；正式解锁路径不依赖 COM AT 或物理 USB 线。
+
+样机的长期压力测试没有形成同等的硬件稳定性结论：
+
+- FM350 发生过 PCIe Surprise Down、Code 10 和 `STATUS_DEVICE_POWER_FAILURE`。
+- 关闭蜂窝连接后，运行高负载应用仍会发生掉卡，说明故障不由数据业务流量触发。
+- 最终移除 FM350 后，Samsung NVMe 仍在游戏负载下从 PCIe 总线消失，并产生 STORPORT/stornvme WHEA 记录及大量 Disk/NTFS 错误。
+
+这些证据将“FCC 认证成功”和“主机长期稳定”明确分开：本项目解决了非 Dell SMBIOS 上的 FCC 软件认证，但该 X99 样机还存在独立的主板、PCIe 插槽、转接板、供电或信号完整性问题。设备电源策略只能绕开可能不兼容的低功耗状态，不能保证或修复电气稳定性。因此，本项目不把该样机后续的掉卡、蓝屏或掉盘归因于 MBIM 应答值，也不宣称已通过长期稳定性验证。
+
+0.4.1 对应的代码和回滚变化集中记录于仓库根目录的 [CHANGELOG.md](../CHANGELOG.md)。

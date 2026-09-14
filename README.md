@@ -13,7 +13,7 @@
 - 主板：非 Dell X99 主板
 - 网络：中国电信，5G SA
 
-其他固件、运营商和 OEM 版本尚未验证。
+该环境已验证 FCC 认证、开机自动解锁和中国电信 5G SA 数据连接。样机随后在高负载下还出现了与 FCC 认证无关的 PCIe/WHEA 及 NVMe 掉盘；移除 FM350 后仍能复现存储设备异常，因此不将该样机的长期硬件稳定性列为已验证。其他主板、转接板、固件、运营商和 OEM 版本尚未验证。完整边界与版本变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 问题表现
 
@@ -46,7 +46,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 安装程序会：
 
 1. 构建自包含的 x64 .NET Windows 服务，并备份匹配网卡实例及 Dell 认证服务的原始状态。
-2. 保留 PCIe COM AT 诊断端口，关闭该网卡的选择性挂起及断开后设备休眠，避免部分 X99 平台出现 PCIe Surprise Down/Completion Timeout。
+2. 保留 PCIe COM AT 诊断端口；对网卡及其 COM AT 子设备关闭选择性挂起、断开后设备休眠、PCI D3cold 和 WDF 工作状态空闲转换，降低不兼容电源转换导致 PCIe Surprise Down、设备电源故障及 Code 10 的风险。这些设置不能修复主板、转接板或供电链路的电气不稳定。
 3. 停止并禁用在非 Dell SMBIOS 上无法工作的原认证服务。
 4. 安装以 `LocalSystem` 自动启动的 `FM350UnlockService`。服务通过 WinRT 监听无线状态和 PCIe 重枚举。
 5. 无线处于 FCC 锁定状态时立即通过已验证的私有 MBIM 命令完成认证；无线已经打开时只监控，不重复认证。
@@ -112,14 +112,15 @@ MBIM 与备用 AT 工具共用同一个哈希应答：
 .\Uninstall.ps1
 ```
 
-卸载程序会删除服务和旧版遗留任务，恢复安装前记录的注册表值和 Dell 服务启动类型。日志与回滚记录会保留在 `C:\ProgramData\FM350Unlock`。
+卸载程序会删除服务和旧版遗留任务，恢复安装前记录的网卡及设备电源注册表值和 Dell 服务启动类型。日志与回滚记录会保留在 `C:\ProgramData\FM350Unlock` 供审计使用。
 
 ## 故障排查
 
-- 找不到 COM AT 端口：不影响正式服务；0.4.0 的自动解锁不访问 COM 端口。若要做手工频段/小区诊断，请确认匹配网卡实例的 `WWANFeatureAT=1` 并在重启后检查设备管理器。
+- 找不到 COM AT 端口：不影响正式服务；0.4.1 的自动解锁不访问 COM 端口。若要做手工频段/小区诊断，请确认匹配网卡实例的 `WWANFeatureAT=1` 并在重启后检查设备管理器。
 - 仍显示硬件无线关闭：查看 `service.log` 中 Query、challenge、verify 和 postVerify 字段。`SUBSYS_35001CF8` 的 Query 显示 `<skipped>` 是正常的；成功的 postVerify 通常为 `0200000001000000`。
 - SIM 已识别但未注册：检查天线、APN、运营商频段和套餐；这已经不是 FCC 锁问题。
 - USB 连接：正式服务走 PCIe/MBIM 驱动路径，不依赖主板上的物理 USB 线，可以把该 USB 接口留给蓝牙。
+- 高负载时设备管理器中的网卡消失、出现 Code 10、WHEA `Surprise Down`，或其他 PCIe/NVMe 设备同时掉线：应转入 PCIe 链路或供电稳定性排查，这不是典型的 FCC 应答值错误。请优先检查带电容的合规转接板、插槽供电与信号质量、BIOS PCIe 设置及主板稳定性。
 
 ## 安全与合规
 

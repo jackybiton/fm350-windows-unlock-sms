@@ -11,7 +11,6 @@ internal sealed class UnlockCoordinator(
     private string? _lastState;
     private string? _lastUnlockedDeviceId;
     private DateTimeOffset _lastAttempt = DateTimeOffset.MinValue;
-    private DateTimeOffset _lastSuccess = DateTimeOffset.MinValue;
     private DateTimeOffset _genericPersonaSeen = DateTimeOffset.MinValue;
 
     public async Task<TimeSpan> RunOnceAsync(CancellationToken cancellationToken)
@@ -28,6 +27,9 @@ internal sealed class UnlockCoordinator(
         if (snapshot.Modem is null || snapshot.RadioState is null)
         {
             _genericPersonaSeen = DateTimeOffset.MinValue;
+            // A real removal/re-enumeration starts a new device lifetime. Only
+            // then may the same PnP identity need another FCC unlock.
+            _lastUnlockedDeviceId = null;
             return TimeSpan.FromSeconds(2);
         }
 
@@ -59,10 +61,13 @@ internal sealed class UnlockCoordinator(
         }
 
         string deviceId = snapshot.Modem.DeviceInformation.DeviceId;
-        if (string.Equals(_lastUnlockedDeviceId, deviceId, StringComparison.Ordinal) &&
-            DateTimeOffset.UtcNow - _lastSuccess < TimeSpan.FromSeconds(15))
+        if (string.Equals(_lastUnlockedDeviceId, deviceId, StringComparison.Ordinal))
         {
-            return TimeSpan.FromSeconds(2);
+            // A user can intentionally leave the cellular radio off. Once FCC
+            // state has been confirmed for this continuously present device,
+            // do not keep opening private MBIM command sessions. If the modem
+            // resets, the NotPresent/NotReady path above clears this guard.
+            return TimeSpan.FromSeconds(5);
         }
 
         if (DateTimeOffset.UtcNow - _lastAttempt < TimeSpan.FromSeconds(4))
@@ -127,7 +132,6 @@ internal sealed class UnlockCoordinator(
     private void MarkSuccess(string deviceId)
     {
         _lastUnlockedDeviceId = deviceId;
-        _lastSuccess = DateTimeOffset.UtcNow;
     }
 
     private void LogStateChange(string state)

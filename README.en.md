@@ -13,7 +13,7 @@ This project does not flash or modify modem firmware and does not redistribute D
 - Non-Dell X99 motherboard
 - China Telecom 5G SA
 
-Other firmware, carrier, and OEM variants are currently unverified.
+This setup verified FCC authentication, automatic cold-start unlock, and a working China Telecom 5G SA data connection. The host later exhibited PCIe/WHEA and NVMe disappearance under load, including a storage failure after the FM350 had been removed. Long-duration hardware stability on this sample is therefore not claimed. Other motherboards, adapters, firmware, carriers, and OEM variants remain unverified. See [CHANGELOG.md](CHANGELOG.md) for the validation boundary and version history.
 
 ## Install
 
@@ -26,7 +26,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\Install.ps1
 ```
 
-The installer builds a self-contained x64 .NET Windows service, backs up matching driver settings, keeps the PCIe COM AT diagnostic endpoint enabled, disables adapter selective suspend and device sleep on disconnect to avoid PCIe Surprise Down/Completion Timeout on affected X99 systems, and disables the Dell SMBIOS-dependent authenticator. `FM350UnlockService` runs as `LocalSystem`, observes radio state through WinRT, and performs the verified private-MBIM Query/Set authentication as soon as a locked modem appears. It removes the former AT startup task. The production unlock path has no COM-port or physical-USB dependency; COM AT remains available for manual band/cell diagnostics.
+The installer builds a self-contained x64 .NET Windows service, backs up matching driver settings, keeps the PCIe COM AT diagnostic endpoint enabled, and disables adapter selective suspend, sleep on disconnect, PCI D3cold, and WDF idle-in-working-state transitions on both the adapter and its COM AT child devices. These settings reduce failures caused by incompatible low-power transitions; they cannot repair unstable motherboard, adapter, or power-delivery hardware. The installer also disables the Dell SMBIOS-dependent authenticator. `FM350UnlockService` runs as `LocalSystem`, observes radio state through WinRT, and performs the verified private-MBIM Query/Set authentication as soon as a locked modem appears. It removes the former AT startup task. The production unlock path has no COM-port or physical-USB dependency; COM AT remains available for manual band/cell diagnostics.
 
 During a cold start, the verified modem can enumerate as either the generic Fibocom persona `SUBSYS_35001CF8` or the Dell runtime persona `SUBSYS_59311028`. The former does not answer the leading Query while FCC-locked, so the service uses Set, Set, then a confirming Query. The Dell persona uses the vendor sequence Query, Set, Set, then confirming Query. Both paths require the final Query's second field to become `1`, and neither mixes AT into an authentication attempt.
 
@@ -58,7 +58,7 @@ Run as Administrator:
 .\Uninstall.ps1
 ```
 
-The uninstaller removes the .NET service and any legacy fallback task, then restores the recorded registry values and Dell service startup mode.
+The uninstaller removes the .NET service and any legacy fallback task, then restores the recorded adapter and device-power registry values and Dell service startup mode.
 
 ## License and disclaimer
 
