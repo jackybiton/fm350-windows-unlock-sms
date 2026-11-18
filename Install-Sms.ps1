@@ -131,10 +131,27 @@ if ($hasContactsFolder -or $DeleteAfterSave -or $carryDeleteAfterSave) {
 
 & $exe --register | Out-Null
 if ($LASTEXITCODE -ne 0) { Write-Warning "Registering notifications and the fm350sms: link failed (exit code $LASTEXITCODE)." }
+
+# Start menu shortcut, so the window can be opened by searching "FM350 SMS" (no arguments = show the window).
+$shortcutPath = Join-Path ([Environment]::GetFolderPath('Programs')) 'FM350 SMS.lnk'
+try {
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = $exe
+    $shortcut.WorkingDirectory = $binDirectory
+    $shortcut.IconLocation = "$exe,0"
+    $shortcut.Description = 'FM350 SMS'
+    $shortcut.Save()
+}
+catch {
+    Write-Warning "Could not create the Start menu shortcut: $($_.Exception.Message)"
+}
+
 Start-Process -FilePath $exe -ArgumentList $arguments
 
 Write-Host ''
 Write-Host 'FM350 SMS installed and running in the notification area (tray).' -ForegroundColor Green
+Write-Host '  Open it from the Start menu ("FM350 SMS") or the tray icon.'
 Write-Host "  Data:     $(Join-Path $dataDirectory 'sms.db')"
 Write-Host "  Log:      $(Join-Path $dataDirectory 'fm350sms.log')"
 Write-Host "  List what is stored on the modem:  & '$exe' --list | Out-String"

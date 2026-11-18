@@ -20,6 +20,7 @@ internal static class SelfTest
         DataLocationTests.Tests,
         DbMergeTests.Tests,
         DraftsTests.Tests,
+        LinksTests.Tests,
     ];
 
     private static int _failures;

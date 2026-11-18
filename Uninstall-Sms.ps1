@@ -1,7 +1,7 @@
 ﻿# SPDX-License-Identifier: MIT
 <#
-  Removes the FM350 SMS app for the current user: the logon entry, the notification and fm350sms: link
-  registration, and the program in %LOCALAPPDATA%\FM350Sms\bin.
+  Removes the FM350 SMS app for the current user: the logon entry, the Start menu shortcut, the notification and
+  fm350sms: link registration, and the program in %LOCALAPPDATA%\FM350Sms\bin.
   Messages, contacts and settings (sms.db, settings.json, the old messages.txt and state.json) are kept unless -RemoveMessages is given.
 
   Run it from a normal PowerShell window (Start menu), not from inside a packaged (MSIX) app such as Claude:
@@ -57,6 +57,7 @@ Get-Process -Name 'Fm350Sms' -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
 Remove-Item -LiteralPath 'HKCU:\Software\Classes\AppUserModelId\FM350.Sms' -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath 'HKCU:\Software\Classes\fm350sms' -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath (Join-Path ([Environment]::GetFolderPath('Programs')) 'FM350 SMS.lnk') -Force -ErrorAction SilentlyContinue
 
 if ($RemoveMessages) {
     Remove-Item -LiteralPath $dataDirectory -Recurse -Force -ErrorAction SilentlyContinue

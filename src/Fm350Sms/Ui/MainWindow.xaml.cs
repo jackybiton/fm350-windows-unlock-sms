@@ -315,6 +315,22 @@ internal partial class MainWindow : Window
         Reload();
     }
 
+    /// <summary>Opens a link from a message in the default browser. Only http/https links ever reach here (<see cref="Links.Find"/>).</summary>
+    private void OnOpenLink(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        e.Handled = true;
+        Uri uri = e.Uri;
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            Log.Write("Opening a link failed: " + ex.Message);
+        }
+    }
+
     private void Queue(long id)
     {
         try
@@ -405,7 +421,8 @@ internal partial class MainWindow : Window
     /// <summary>A bubble of the message pane. Sent messages sit on the right, received ones on the left.</summary>
     private sealed record MessageItem(
         long Id, string Body, FlowDirection BodyFlow, string Time, string Status, Brush StatusBrush, string? Error,
-        Visibility RetryVisibility, string RetryLabel, bool MaybeSent, HorizontalAlignment Alignment, Brush Background)
+        Visibility RetryVisibility, string RetryLabel, bool MaybeSent, HorizontalAlignment Alignment, Brush Background,
+        IReadOnlyList<Link> Links)
     {
         public static MessageItem From(MessageRow m, DateTime now)
         {
@@ -421,7 +438,8 @@ internal partial class MainWindow : Window
                 outgoing ? m.Error : null, retry ? Visibility.Visible : Visibility.Collapsed,
                 Compose.RetryLabel(m.Status, m.Error), Compose.MaybeSent(m.Status, m.Error),
                 outgoing ? HorizontalAlignment.Left : HorizontalAlignment.Right,
-                (Brush)Application.Current.Resources[outgoing ? "OutgoingBrush" : "IncomingBrush"]);
+                (Brush)Application.Current.Resources[outgoing ? "OutgoingBrush" : "IncomingBrush"],
+                Fm350Sms.Links.Find(m.Body));
         }
     }
 

@@ -50,6 +50,20 @@
                     <TextBox Text="{Binding Body, Mode=OneWay}" FlowDirection="{Binding BodyFlow}" IsReadOnly="True"
                              TextWrapping="Wrap" BorderThickness="0" Background="Transparent" Padding="0"
                              IsTabStop="False" ContextMenu="{StaticResource MessageMenu}" />
+                    <!-- Links in the message: the real host is shown (punycode for look-alikes), the full address on hover. -->
+                    <ItemsControl ItemsSource="{Binding Links}" Margin="0,4,0,0" IsTabStop="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock FlowDirection="LeftToRight" HorizontalAlignment="Left" Margin="0,1"
+                                           ToolTip="{Binding Uri.AbsoluteUri}">
+                                    <Run Text="🔗 " />
+                                    <Hyperlink NavigateUri="{Binding Uri}" RequestNavigate="OnOpenLink">
+                                        <Run Text="{Binding Host, Mode=OneWay}" />
+                                    </Hyperlink>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0" HorizontalAlignment="Right">
                         <TextBlock Text="{Binding Status}" Margin="0,0,6,0" FontSize="11" ToolTip="{Binding Error}"
                                    Foreground="{Binding StatusBrush}" />

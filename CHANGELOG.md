@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `Install-Sms.ps1` adds a Start menu shortcut "FM350 SMS"; `Uninstall-Sms.ps1`
+  removes it.
+- Web links in messages (http, https, www.) are listed under the message as
+  clickable links that open in the default browser. The real host is shown
+  (punycode for look-alike domains) and the full address appears on hover;
+  other schemes and links with a user name before `@` are ignored.
+
 ## Fm350Sms 0.2.0 - 2026-11-18
 
 ### Added

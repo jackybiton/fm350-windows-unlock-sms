@@ -123,7 +123,7 @@ MBIM 与备用 AT 工具共用同一个哈希应答：
 
 > **请在普通 PowerShell 窗口中运行安装程序**（开始菜单 → PowerShell）。Claude 桌面应用等打包（MSIX）应用会把其启动的所有进程的 `%LOCALAPPDATA%` 重定向到私有副本（`%LOCALAPPDATA%\Packages\<应用>\LocalCache\Local`），在那里安装或启动的应用会使用另一个独立的数据库。安装程序和应用会检测到这种情况并停止。如果之前的运行在 Claude 副本中留下了历史记录，安装程序会询问是否将其合并到真正的数据库（合并前会先备份）。
 
-应用会在每次登录时最小化启动（HKCU Run 键）。`-DeleteAfterSave` 保存在 `settings.json` 中，之后在应用菜单中关闭会一直生效；不带该开关再次运行安装程序会保留当前设置。如果安装程序旁有 `contacts` 文件夹，导入对话框会默认打开该文件夹。常用命令：
+应用会在每次登录时最小化启动（HKCU Run 键）。可从开始菜单（“FM350 SMS”）或双击托盘图标打开窗口。`-DeleteAfterSave` 保存在 `settings.json` 中，之后在应用菜单中关闭会一直生效；不带该开关再次运行安装程序会保留当前设置。如果安装程序旁有 `contacts` 文件夹，导入对话框会默认打开该文件夹。常用命令：
 
 ```powershell
 $sms = "$env:LOCALAPPDATA\FM350Sms\bin\Fm350Sms.exe"

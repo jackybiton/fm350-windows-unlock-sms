@@ -69,7 +69,7 @@ Install for the current user (requires .NET SDK 10):
 
 > **Run the installer from a normal PowerShell window** (Start menu → PowerShell). Packaged (MSIX) apps such as the Claude desktop app redirect `%LOCALAPPDATA%` for every process they start into a private copy (`%LOCALAPPDATA%\Packages\<app>\LocalCache\Local`). An app installed or started from there would use a second, separate database. The installer and the app detect this and stop. If an earlier run left history in the Claude copy, the installer offers to merge it into the real database, after making a backup.
 
-The app starts minimized at every logon (HKCU Run key). `-DeleteAfterSave` is stored in `settings.json`, so turning it off later in the app's menu sticks; running the installer again without the switch keeps the current choice. If a `contacts` folder exists next to the installer, the import dialog opens there. Useful commands:
+The app starts minimized at every logon (HKCU Run key). Open the window from the Start menu ("FM350 SMS") or by double-clicking the tray icon. `-DeleteAfterSave` is stored in `settings.json`, so turning it off later in the app's menu sticks; running the installer again without the switch keeps the current choice. If a `contacts` folder exists next to the installer, the import dialog opens there. Useful commands:
 
 ```powershell
 $sms = "$env:LOCALAPPDATA\FM350Sms\bin\Fm350Sms.exe"
