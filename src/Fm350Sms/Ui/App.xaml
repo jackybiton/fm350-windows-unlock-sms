@@ -1,0 +1,14 @@
+<Application x:Class="Fm350Sms.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:ClassModifier="internal"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <SolidColorBrush x:Key="AccentBrush" Color="#0067C0" />
+        <SolidColorBrush x:Key="SubtleBrush" Color="#6B6B6B" />
+        <SolidColorBrush x:Key="DividerBrush" Color="#E5E5E5" />
+        <SolidColorBrush x:Key="PaneBrush" Color="#F7F7F7" />
+        <SolidColorBrush x:Key="IncomingBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="OutgoingBrush" Color="#DCEBFA" />
+    </Application.Resources>
+</Application>

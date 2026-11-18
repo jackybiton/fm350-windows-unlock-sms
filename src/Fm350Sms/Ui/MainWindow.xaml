@@ -1,0 +1,193 @@
+<Window x:Class="Fm350Sms.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:ClassModifier="internal"
+        Title="FM350 SMS"
+        Width="980" Height="640" MinWidth="640" MinHeight="420"
+        WindowStartupLocation="CenterScreen"
+        FlowDirection="RightToLeft"
+        FontFamily="Segoe UI" FontSize="14"
+        Background="White"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+    <Window.Resources>
+        <!-- Thread list row: title + time, then a one-line preview. -->
+        <DataTemplate x:Key="ThreadTemplate">
+            <Grid Margin="12,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding Title}" FlowDirection="{Binding TitleFlow}" HorizontalAlignment="Left"
+                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding Time}" FlowDirection="LeftToRight" Margin="8,0,0,0"
+                           FontSize="12" Foreground="{StaticResource SubtleBrush}" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Preview}" FlowDirection="{Binding PreviewFlow}"
+                           HorizontalAlignment="Left" Margin="0,2,0,0" FontSize="13"
+                           Foreground="{StaticResource SubtleBrush}" TextTrimming="CharacterEllipsis" />
+            </Grid>
+        </DataTemplate>
+
+        <!-- Context menus (one instance per element). -->
+        <ContextMenu x:Key="MessageMenu" x:Shared="False">
+            <MenuItem Header="העתק" Click="OnCopyMessage" />
+            <MenuItem Header="מחק הודעה" Click="OnDeleteMessage" />
+        </ContextMenu>
+        <ContextMenu x:Key="ThreadMenu" x:Shared="False">
+            <MenuItem Header="מחק שיחה" Click="OnDeleteThread" />
+        </ContextMenu>
+
+        <!-- One message: a bubble with selectable text, its time and, for sent ones, the send status. -->
+        <DataTemplate x:Key="MessageTemplate">
+            <Border Background="{Binding Background}" HorizontalAlignment="{Binding Alignment}"
+                    CornerRadius="10" Padding="12,8" Margin="16,4" MaxWidth="520"
+                    BorderBrush="{StaticResource DividerBrush}" BorderThickness="1"
+                    ContextMenu="{StaticResource MessageMenu}">
+                <StackPanel>
+                    <TextBox Text="{Binding Body, Mode=OneWay}" FlowDirection="{Binding BodyFlow}" IsReadOnly="True"
+                             TextWrapping="Wrap" BorderThickness="0" Background="Transparent" Padding="0"
+                             IsTabStop="False" ContextMenu="{StaticResource MessageMenu}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0" HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding Status}" Margin="0,0,6,0" FontSize="11" ToolTip="{Binding Error}"
+                                   Foreground="{Binding StatusBrush}" />
+                        <TextBlock Margin="0,0,6,0" FontSize="11" Visibility="{Binding RetryVisibility}">
+                            <Hyperlink Click="OnRetry"><Run Text="{Binding RetryLabel, Mode=OneWay}" /></Hyperlink>
+                        </TextBlock>
+                        <TextBlock Text="{Binding Time}" FlowDirection="LeftToRight" FontSize="11"
+                                   Foreground="{StaticResource SubtleBrush}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Top bar: search above the thread list (right in RTL), new message, then the menus at the far end. -->
+        <Border DockPanel.Dock="Top" Padding="12,10" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid>
+                    <TextBox x:Name="SearchBox" Padding="6,4" VerticalContentAlignment="Center"
+                             TextChanged="OnSearchChanged" />
+                    <TextBlock x:Name="SearchHint" Text="חיפוש..." Margin="10,0" VerticalAlignment="Center"
+                               Foreground="{StaticResource SubtleBrush}" IsHitTestVisible="False" />
+                </Grid>
+                <Button Grid.Column="1" Content="הודעה חדשה" Padding="14,4" Margin="12,0,0,0" Click="OnNewMessage" />
+                <Menu Grid.Column="3" Background="Transparent" VerticalAlignment="Center">
+                    <MenuItem Header="אנשי קשר" Padding="10,4">
+                        <MenuItem Header="ייבוא אנשי קשר" Click="OnImportContacts" />
+                        <MenuItem Header="ייצוא אנשי קשר" Click="OnExportContacts" />
+                        <Separator />
+                        <MenuItem Header="איש קשר חדש" Click="OnNewContact" />
+                    </MenuItem>
+                    <MenuItem Header="הגדרות" Padding="10,4">
+                        <MenuItem x:Name="DeleteAfterSaveItem" Header="מחק מהמודם אחרי שמירה" IsCheckable="True"
+                                  Click="OnDeleteAfterSaveClick" />
+                    </MenuItem>
+                </Menu>
+            </Grid>
+        </Border>
+
+        <!-- Status bar: modem state, last check, counts. -->
+        <StatusBar DockPanel.Dock="Bottom" Background="{StaticResource PaneBrush}" Padding="8,2">
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="ModemDot" Width="9" Height="9" Margin="0,0,6,0" Fill="Gray" VerticalAlignment="Center" />
+                    <TextBlock x:Name="ModemText" Text="בודק את המודם..." />
+                </StackPanel>
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="בדיקה אחרונה: " />
+                    <TextBlock x:Name="LastCheckText" Text="—" FlowDirection="LeftToRight" />
+                </StackPanel>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock x:Name="CountsText" Foreground="{StaticResource SubtleBrush}" />
+            </StatusBarItem>
+        </StatusBar>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="324" MinWidth="220" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid>
+                <ListBox x:Name="ThreadList" ItemTemplate="{StaticResource ThreadTemplate}" BorderThickness="0"
+                         HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         SelectionChanged="OnThreadSelected">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="ContextMenu" Value="{StaticResource ThreadMenu}" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+                <TextBlock x:Name="NoThreadsText" Text="אין הודעות" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{StaticResource SubtleBrush}" Visibility="Collapsed" />
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Width="1" Background="{StaticResource DividerBrush}" HorizontalAlignment="Stretch"
+                          ResizeBehavior="PreviousAndNext" />
+
+            <DockPanel Grid.Column="2" Background="{StaticResource PaneBrush}">
+                <Border DockPanel.Dock="Top" Background="White" Padding="16,10" BorderBrush="{StaticResource DividerBrush}"
+                        BorderThickness="0,0,0,1">
+                    <DockPanel>
+                        <Button x:Name="HeaderAction" DockPanel.Dock="Right" Padding="12,3" Visibility="Collapsed"
+                                Click="OnHeaderAction" />
+                        <StackPanel Orientation="Horizontal" MinHeight="26">
+                            <TextBlock x:Name="HeaderTitle" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock x:Name="HeaderNumbers" Margin="10,0,0,0" VerticalAlignment="Center" FlowDirection="LeftToRight"
+                                       Foreground="{StaticResource SubtleBrush}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- Compose box: text, send button, recipient, characters left and parts. -->
+                <Border x:Name="ComposePanel" DockPanel.Dock="Bottom" Background="White" Padding="12,10"
+                        BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0" Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBox x:Name="ComposeBox" Padding="6,4" MinHeight="34" MaxHeight="120" AcceptsReturn="True"
+                                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Center"
+                                 TextChanged="OnComposeChanged" PreviewKeyDown="OnComposeKeyDown" />
+                        <Button x:Name="SendButton" Grid.Column="1" Content="שלח" MinWidth="72" Margin="8,0,0,0" Padding="12,4"
+                                VerticalAlignment="Bottom" IsEnabled="False" Click="OnSend" />
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="2,4,0,0">
+                            <TextBlock Text="אל:" FontSize="12" Foreground="{StaticResource SubtleBrush}" />
+                            <TextBlock x:Name="RecipientNumber" FontSize="12" FlowDirection="LeftToRight" Margin="4,0,12,0"
+                                       Foreground="{StaticResource SubtleBrush}" />
+                            <TextBlock x:Name="CounterText" FontSize="12" Foreground="{StaticResource SubtleBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Grid>
+                    <ScrollViewer x:Name="MessageScroller" VerticalScrollBarVisibility="Auto" Padding="0,8">
+                        <ItemsControl x:Name="MessageList" ItemTemplate="{StaticResource MessageTemplate}" />
+                    </ScrollViewer>
+                    <TextBlock x:Name="NoSelectionText" Text="בחרו שיחה מהרשימה" HorizontalAlignment="Center"
+                               VerticalAlignment="Center" Foreground="{StaticResource SubtleBrush}" />
+                </Grid>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -104,6 +104,37 @@ MBIM 与备用 AT 工具共用同一个哈希应答：
 
 完整的诊断、逆向定位与验证过程见 [docs/RESEARCH.md](docs/RESEARCH.md)。文档中的设备身份、SIM 信息、主机名和公网/地址标识均已删除。
 
+## 短信应用（可选）
+
+`Fm350Sms` 是一个用于该模组的希伯来文（从右到左）短信应用。它通过 Windows 移动宽带 API（`IMbnSms`）经 MBIM 收发短信，不需要 COM AT 端口，也不需要管理员权限。分段长短信会自动合并，支持 GSM 7 位、8 位和 UCS2（中文、希伯来文等）编码。
+
+- **窗口与托盘。** 会话按最新消息排序，搜索框可按姓名、号码和内容过滤。关闭窗口后应用继续在通知区域运行。每条新短信都会显示 Windows 通知，点击通知即打开对应会话。
+- **联系人。** “אנשי קשר → ייבוא”（联系人 → 导入）读取 Google 通讯录导出的 CSV（或 vCard `.vcf`）并为会话命名，再次导入会替换之前导入的联系人。在应用中设置的名称（重命名、新建联系人）在重新导入后仍保留，“ייצוא”（导出）会把它们写成 Google 通讯录可以导入的 Google CSV 文件。
+- **删除。** 右键单击一条消息或一个会话即可删除（需确认）。只从应用中删除，绝不会从模组删除，被删除的短信也不会再次出现。
+- **发送。** 点击“הודעה חדשה”（新消息），或在已打开的会话中输入。Enter 发送，Shift+Enter 换行。长短信会分段发送。“נשלחה” 表示模组已接受该短信；“נשלחה (המודם לא אישר)” 表示短信已交给模组，但模组没有确认，请先向对方确认，再决定是否重发。发送失败的短信可以重试；如果模组没有应答或只发出了部分分段，消息会注明这一点，“שלח שוב”（再次发送）会先询问，因为对方可能已经收到。一条短信最多 10 段。
+- **存储。** 短信、联系人和设置保存在 `%LOCALAPPDATA%\FM350Sms\sms.db`（SQLite）和 `settings.json` 中。v0.1.0 保存的短信（`messages.txt`）会导入一次。
+
+以当前用户安装（需要 .NET SDK 10）：
+
+```powershell
+.\Install-Sms.ps1                   # 保存后短信仍保留在模组/SIM 中
+.\Install-Sms.ps1 -DeleteAfterSave  # 保存后从模组删除短信（写入 settings.json）
+```
+
+> **请在普通 PowerShell 窗口中运行安装程序**（开始菜单 → PowerShell）。Claude 桌面应用等打包（MSIX）应用会把其启动的所有进程的 `%LOCALAPPDATA%` 重定向到私有副本（`%LOCALAPPDATA%\Packages\<应用>\LocalCache\Local`），在那里安装或启动的应用会使用另一个独立的数据库。安装程序和应用会检测到这种情况并停止。如果之前的运行在 Claude 副本中留下了历史记录，安装程序会询问是否将其合并到真正的数据库（合并前会先备份）。
+
+应用会在每次登录时最小化启动（HKCU Run 键）。`-DeleteAfterSave` 保存在 `settings.json` 中，之后在应用菜单中关闭会一直生效；不带该开关再次运行安装程序会保留当前设置。如果安装程序旁有 `contacts` 文件夹，导入对话框会默认打开该文件夹。常用命令：
+
+```powershell
+$sms = "$env:LOCALAPPDATA\FM350Sms\bin\Fm350Sms.exe"
+& $sms --where | Out-String               # 当前使用的数据文件夹，以及是否被重定向
+& $sms --list | Out-String                # 模组中存储的短信
+& $sms --test-notification
+& $sms --merge-db C:\path\to\sms.db | Out-String   # 合并另一个数据库（先备份，可重复运行）
+```
+
+运行 `.\Uninstall-Sms.ps1` 卸载（同样在普通 PowerShell 窗口中运行）；除非指定 `-RemoveMessages`，短信和联系人会保留。暂不支持 class 0（闪信）。
+
 ## 卸载
 
 以管理员身份运行：

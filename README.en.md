@@ -50,6 +50,37 @@ Run manually or test the algorithm without a modem:
 
 See [README.md](README.md) and [docs/RESEARCH.md](docs/RESEARCH.md) for the algorithm, diagnostics, research notes, rollback steps, and safety notes.
 
+## SMS app (optional)
+
+`Fm350Sms` is a small Hebrew (right-to-left) SMS app for the modem. It reads and sends SMS over MBIM through the Windows Mobile Broadband API (`IMbnSms`), so it needs no COM AT port and no administrator rights. Long messages that arrive in several parts are joined, and GSM 7-bit, 8-bit and UCS2 text (for example Hebrew or Chinese) is decoded.
+
+- **Window and tray.** Conversations are listed by newest message, with a search box across names, numbers and text. Closing the window keeps the app running in the notification area. Each new SMS shows a Windows notification, and clicking it opens that conversation.
+- **Contacts.** *אנשי קשר → ייבוא* (Contacts → Import) reads a Google Contacts CSV export (or a vCard `.vcf`) and names the conversations. A new import replaces the imported contacts. Names you set in the app (rename, new contact) are kept across imports, and *ייצוא* (Export) writes them as a Google CSV file that Google Contacts can import.
+- **Delete.** Right-click a message or a conversation to delete it, after a confirmation. This deletes it from the app only, never from the modem, and a deleted message does not come back.
+- **Send.** Use *הודעה חדשה* (New message), or type in an open conversation. Enter sends and Shift+Enter starts a new line. Long messages are sent in several parts. "נשלחה" means the modem accepted the message. "נשלחה (המודם לא אישר)" means it was handed to the modem but the modem did not confirm it, so check with the recipient before sending it again. A failed message can be retried. If the modem did not answer or only some parts went out, the bubble says so and *שלח שוב* (send again) asks first, because the recipient may already have it. A message can have at most 10 parts.
+- **Storage.** Messages, contacts and settings are kept in `%LOCALAPPDATA%\FM350Sms\sms.db` (SQLite) and `settings.json`. Messages saved by v0.1.0 (`messages.txt`) are imported once.
+
+Install for the current user (requires .NET SDK 10):
+
+```powershell
+.\Install-Sms.ps1                   # keep messages on the modem/SIM
+.\Install-Sms.ps1 -DeleteAfterSave  # delete each message from the modem once saved (saved in settings.json)
+```
+
+> **Run the installer from a normal PowerShell window** (Start menu → PowerShell). Packaged (MSIX) apps such as the Claude desktop app redirect `%LOCALAPPDATA%` for every process they start into a private copy (`%LOCALAPPDATA%\Packages\<app>\LocalCache\Local`). An app installed or started from there would use a second, separate database. The installer and the app detect this and stop. If an earlier run left history in the Claude copy, the installer offers to merge it into the real database, after making a backup.
+
+The app starts minimized at every logon (HKCU Run key). `-DeleteAfterSave` is stored in `settings.json`, so turning it off later in the app's menu sticks; running the installer again without the switch keeps the current choice. If a `contacts` folder exists next to the installer, the import dialog opens there. Useful commands:
+
+```powershell
+$sms = "$env:LOCALAPPDATA\FM350Sms\bin\Fm350Sms.exe"
+& $sms --where | Out-String               # data folder in use, and whether it is redirected
+& $sms --list | Out-String                # what is stored on the modem
+& $sms --test-notification
+& $sms --merge-db C:\path\to\sms.db | Out-String   # merge another database (backup first; safe to repeat)
+```
+
+Remove it with `.\Uninstall-Sms.ps1`, also from a normal PowerShell window. Messages and contacts are kept unless you pass `-RemoveMessages`. Receiving a UCS2 (Hebrew) SMS was verified on firmware `81600.0000.00.29.22.06_GC` with an Israeli carrier. Class 0 (flash) messages are not supported.
+
 ## Uninstall
 
 Run as Administrator:

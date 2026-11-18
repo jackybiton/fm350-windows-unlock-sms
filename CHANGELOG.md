@@ -1,5 +1,61 @@
 # Changelog
 
+## Fm350Sms 0.2.0 - 2026-11-18
+
+### Added
+
+- `Fm350Sms` is now a Hebrew (right-to-left) WPF SMS app with a window, a tray
+  icon, and notifications that open the conversation. It replaces the v0.1.0
+  receiver in place (same exe, data folder, Run value and notification id).
+- Messages are stored in SQLite (`%LOCALAPPDATA%\FM350Sms\sms.db`). The v0.1.0
+  `messages.txt` and `state.json` are imported once and left untouched.
+- Conversations grouped by contact, with search and rename.
+- Contacts import from a Google Contacts CSV export (current and older
+  layout) or vCard, and export of the app's own contacts as Google CSV.
+- Delete a message or a conversation (in the app only, never on the modem).
+- Sending SMS over MBIM, including long messages. Enter sends and Shift+Enter
+  starts a new line. "נשלחה (המודם לא אישר)" marks a message the modem did not
+  confirm. Failed messages can be retried; one that timed out or was only
+  partly sent says so, and "שלח שוב" asks before sending it again. A message
+  can have at most 10 parts.
+- `--where` prints the data folder in use and whether it is redirected (exit
+  code 3 when it is).
+- `--merge-db <sms.db>` merges another database into the current one. It makes
+  an online backup first, reads the source through a temporary copy, skips
+  duplicates, and adds nothing on a second run.
+
+### Changed
+
+- `Install-Sms.ps1` starts the app minimized at logon (`--minimized`), stores
+  `-DeleteAfterSave` in `settings.json` (so turning it off in the app's menu
+  sticks; without the switch an existing value is kept, and an older install's
+  `--delete-after-save` is carried over), registers the `fm350sms:`
+  link, and points the contacts import at the repository's `contacts` folder
+  when it exists. It builds outside `src\Fm350Sms\bin`, so a running copy no
+  longer breaks the build.
+- `Install-Sms.ps1` and `Uninstall-Sms.ps1` stop without changing anything when
+  `%LOCALAPPDATA%` is redirected by a packaged (MSIX) host such as the Claude
+  desktop app, and the app refuses to start there. The installer offers to
+  merge history found in the Claude private copy into the real database.
+- `Uninstall-Sms.ps1` also removes the `fm350sms:` link registration, and keeps
+  `sms.db`, `settings.json` and the v0.1.0 `messages.txt` and `state.json`
+  unless `-RemoveMessages` is given.
+
+### Removed
+
+- The temporary `--send-test` command.
+
+## Fm350Sms 0.1.0
+
+- `Fm350Sms`, an optional per-user SMS receiver. It reads the modem's SMS
+  store over MBIM through the Windows Mobile Broadband API (`IMbnSms`), shows
+  each new message as a Windows notification and appends it to
+  `%LOCALAPPDATA%\FM350Sms\messages.txt`. It decodes GSM 7-bit, 8-bit and UCS2
+  PDUs, joins concatenated messages, and needs neither an AT port nor
+  administrator rights. `Install-Sms.ps1` and `Uninstall-Sms.ps1` manage it;
+  `-DeleteAfterSave` removes saved messages from the modem.
+- CI builds the SMS receiver and runs its PDU decoder self-test.
+
 ## 0.4.1 - 2026-09-14
 
 ### Changed

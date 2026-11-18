@@ -39,6 +39,16 @@ jobs:
         shell: pwsh
         run: artifacts/service-win-x64/Fm350UnlockService.exe --self-test
 
+      - name: Build SMS receiver
+        shell: pwsh
+        run: dotnet build src/Fm350Sms/Fm350Sms.csproj -c Release
+
+      - name: SMS decoder self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process src/Fm350Sms/bin/Release/net10.0-windows10.0.26100.0/win-x64/Fm350Sms.exe -ArgumentList '--self-test' -Wait -PassThru -NoNewWindow
+          exit $p.ExitCode
+
       - uses: actions/upload-artifact@v4
         with:
           name: fm350-unlock-service-win-x64
