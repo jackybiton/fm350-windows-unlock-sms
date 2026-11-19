@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `Install-Sms.ps1` starts the app at sign-in with a per-user scheduled task
+  ("FM350 SMS", no administrator rights) instead of the HKCU Run key, which
+  Windows starts one entry at a time and could delay by several minutes. The
+  old Run value is removed; the Run key is used only if the task cannot be
+  created. `Uninstall-Sms.ps1` removes the task.
 - `Fm350Sms` has an app icon (blue tile, white speech bubble, signal arcs):
   embedded in the exe (Start menu shortcut, Explorer, taskbar), used for the
   tray icon at the system's small-icon size, the window title bar, and

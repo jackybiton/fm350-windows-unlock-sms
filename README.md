@@ -112,7 +112,7 @@ This removes the service and any legacy task, and restores the recorded adapter 
 .\Install-Sms.ps1
 ```
 
-The installer builds the app, runs its self-test, copies it to `%LOCALAPPDATA%\FM350Sms\bin`, adds a **Start menu shortcut "FM350 SMS"**, makes it start minimized at every logon, and starts it. If a `contacts` folder exists next to the installer, the contacts import dialog opens there. If an earlier run left message history in a redirected private copy, the installer offers to merge it into the real database (after a backup; repeating it adds nothing).
+The installer builds the app, runs its self-test, copies it to `%LOCALAPPDATA%\FM350Sms\bin`, adds a **Start menu shortcut "FM350 SMS"**, makes it start minimized in the tray right after every sign-in (a per-user scheduled task named "FM350 SMS", no administrator rights needed), and starts it. If a `contacts` folder exists next to the installer, the contacts import dialog opens there. If an earlier run left message history in a redirected private copy, the installer offers to merge it into the real database (after a backup; repeating it adds nothing).
 
 To delete each message from the modem/SIM once it has been saved in the app, install with `.\Install-Sms.ps1 -DeleteAfterSave`, or switch it on later in the app's menu. By default messages stay on the modem.
 

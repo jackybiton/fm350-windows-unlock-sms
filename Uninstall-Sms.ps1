@@ -1,6 +1,6 @@
 ﻿# SPDX-License-Identifier: MIT
 <#
-  Removes the FM350 SMS app for the current user: the logon entry, the Start menu shortcut, the notification and
+  Removes the FM350 SMS app for the current user: the sign-in task (or older Run entry), the Start menu shortcut, the notification and
   fm350sms: link registration, and the program in %LOCALAPPDATA%\FM350Sms\bin.
   Messages, contacts and settings (sms.db, settings.json, the old messages.txt and state.json) are kept unless -RemoveMessages is given.
 
@@ -53,6 +53,7 @@ if ($redirected) {
 }
 
 Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'FM350 SMS' -ErrorAction SilentlyContinue
+Unregister-ScheduledTask -TaskName 'FM350 SMS' -Confirm:$false -ErrorAction SilentlyContinue
 Get-Process -Name 'Fm350Sms' -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
 Remove-Item -LiteralPath 'HKCU:\Software\Classes\AppUserModelId\FM350.Sms' -Recurse -Force -ErrorAction SilentlyContinue

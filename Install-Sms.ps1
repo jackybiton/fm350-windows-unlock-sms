@@ -3,7 +3,8 @@
   Installs the FM350 SMS app for the current user (no administrator rights needed).
 
   It builds src\Fm350Sms as a self-contained single-file exe, copies it to
-  %LOCALAPPDATA%\FM350Sms\bin, starts it minimized to the tray at every logon (HKCU Run key) and starts it now.
+  %LOCALAPPDATA%\FM350Sms\bin, starts it minimized to the tray at every sign-in (a per-user scheduled task "FM350 SMS"; the HKCU Run key
+  only if the task cannot be created) and starts it now.
   Messages, contacts and settings are kept in %LOCALAPPDATA%\FM350Sms (sms.db, settings.json).
 
   Run it from a normal PowerShell window (Start menu). Inside a packaged (MSIX) app, for example the Claude desktop
@@ -106,7 +107,28 @@ foreach ($source in $packaged) {
 $previousRun = (Get-ItemProperty -Path $runKey -Name $runValue -ErrorAction SilentlyContinue).$runValue
 $carryDeleteAfterSave = (-not $DeleteAfterSave) -and ("$previousRun" -match '--delete-after-save')
 $arguments = '--minimized'
-Set-ItemProperty -Path $runKey -Name $runValue -Value ('"{0}" {1}' -f $exe, $arguments)
+
+# Start at logon through a per-user scheduled task: it runs right after sign-in, while HKCU\...\Run entries are
+# started one by one and can be minutes late. No administrator rights are needed for a task of the current user.
+# If the task cannot be created, fall back to the Run value.
+$taskName = 'FM350 SMS'
+$taskUser = "$env:USERDOMAIN\$env:USERNAME"
+try {
+    $taskAction = New-ScheduledTaskAction -Execute $exe -Argument $arguments -WorkingDirectory $binDirectory
+    $taskTrigger = New-ScheduledTaskTrigger -AtLogOn -User $taskUser
+    $taskPrincipal = New-ScheduledTaskPrincipal -UserId $taskUser -LogonType Interactive -RunLevel Limited
+    # No time limit (the default stops a task after 3 days), never a second copy, and also on battery.
+    $taskSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+        -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -StartWhenAvailable
+    Register-ScheduledTask -TaskName $taskName -Action $taskAction -Trigger $taskTrigger -Principal $taskPrincipal `
+        -Settings $taskSettings -Description 'Starts the FM350 SMS app in the tray at sign-in.' -Force -ErrorAction Stop | Out-Null
+    Remove-ItemProperty -Path $runKey -Name $runValue -ErrorAction SilentlyContinue
+    Write-Host "Starts at sign-in: scheduled task '$taskName'."
+}
+catch {
+    Write-Warning "Could not create the logon task ($($_.Exception.Message)); using the Run key instead, which Windows may start a few minutes after sign-in."
+    Set-ItemProperty -Path $runKey -Name $runValue -Value ('"{0}" {1}' -f $exe, $arguments)
+}
 
 $hasContactsFolder = Test-Path -LiteralPath $contactsFolder -PathType Container
 if ($hasContactsFolder -or $DeleteAfterSave -or $carryDeleteAfterSave) {
