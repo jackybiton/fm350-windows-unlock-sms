@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Project renamed to `fm350-windows-unlock-sms`. `README.md` is now one
+  English guide for both the FCC unlock and the SMS app; the Chinese guide
+  moved to `README.zh-CN.md`, and `README.en.md` was merged into `README.md`.
 - `Install-Sms.ps1` adds a Start menu shortcut "FM350 SMS"; `Uninstall-Sms.ps1`
   removes it.
 - Web links in messages (http, https, www.) are listed under the message as
