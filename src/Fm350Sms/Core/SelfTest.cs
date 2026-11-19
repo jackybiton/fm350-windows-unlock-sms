@@ -21,6 +21,7 @@ internal static class SelfTest
         DbMergeTests.Tests,
         DraftsTests.Tests,
         LinksTests.Tests,
+        AppIconTests.Tests,
     ];
 
     private static int _failures;

@@ -13,6 +13,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <AssemblyName>Fm350Sms</AssemblyName>
     <RootNamespace>Fm350Sms</RootNamespace>
     <Version>0.2.0</Version>
@@ -27,5 +28,10 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- App icon (generated: blue tile, white speech bubble, signal arcs). Embedded for the tray, window and notifications. -->
+    <EmbeddedResource Include="Assets\app.ico" LogicalName="Fm350Sms.app.ico" />
+    <EmbeddedResource Include="Assets\app.png" LogicalName="Fm350Sms.app.png" />
   </ItemGroup>
 </Project>

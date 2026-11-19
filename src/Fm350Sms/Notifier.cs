@@ -22,6 +22,15 @@ internal static class Notifier
         {
             key.SetValue("DisplayName", "FM350 SMS");
             key.SetValue("ShowInSettings", 1, RegistryValueKind.DWord);
+            // Icon shown on notifications and in Settings → Notifications (a file is required; written next to the data).
+            try
+            {
+                key.SetValue("IconUri", AppIcon.WritePng(Path.Combine(Paths.DataDirectory, "app.png")));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Write("Could not write the notification icon: " + ex.Message);
+            }
         }
 
         string exe = Environment.ProcessPath ?? throw new InvalidOperationException("Process path unknown.");

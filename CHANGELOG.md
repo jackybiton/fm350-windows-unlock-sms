@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `Fm350Sms` has an app icon (blue tile, white speech bubble, signal arcs):
+  embedded in the exe (Start menu shortcut, Explorer, taskbar), used for the
+  tray icon at the system's small-icon size, the window title bar, and
+  registered for notifications.
 - Project renamed to `fm350-windows-unlock-sms`. `README.md` is now one
   English guide for both the FCC unlock and the SMS app; the Chinese guide
   moved to `README.zh-CN.md`, and `README.en.md` was merged into `README.md`.
